@@ -1,0 +1,75 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "properties": {
+    "ACCOUNT_ID": {
+      "type": ["string", "null"],
+      "airbyte_type": "string"
+    },
+    "ACCOUNT_NAME": {
+      "type": ["string", "null"],
+      "airbyte_type": "string"
+    },
+    "DAY": {
+      "type": ["string", "null"],
+      "airbyte_type": "string",
+      "format": "date"
+    },
+    "DEVICE": {
+      "type": ["string", "null"],
+      "airbyte_type": "string"
+    },
+    "CAMPAIGN_ID": {
+      "type": ["integer", "null"],
+      "airbyte_type": "string"
+    },
+    "CAMPAIGN_NAME": {
+      "type": ["string", "null"],
+      "airbyte_type": "string"
+    },
+    "ADGROUP_ID": {
+      "type": ["integer", "null"],
+      "airbyte_type": "string"
+    },
+    "ADGROUP_NAME": {
+      "type": ["string", "null"],
+      "airbyte_type": "string"
+    },
+    "AD_ID": {
+      "type": ["integer", "null"],
+      "airbyte_type": "string"
+    },
+    "AD_NAME": {
+      "type": ["string", "null"],
+      "airbyte_type": "string"
+    },
+    "COST": {
+      "type": ["integer", "null"],
+      "airbyte_type": "string"
+    },
+    "IMPS": {
+      "type": ["integer", "null"],
+      "airbyte_type": "string"
+    },
+    "CLICKS": {
+      "type": ["integer", "null"],
+      "airbyte_type": "string"
+    },
+    "CLICK_RATE": {
+      "type": ["number", "null"],
+      "airbyte_type": "string"
+    },
+    "AVG_CPC": {
+      "type": ["number", "null"],
+      "airbyte_type": "string"
+    },
+    "CONVERSIONS": {
+      "type": ["number", "null"],
+      "airbyte_type": "string"
+    },
+    "CONV_RATE": {
+      "type": ["number", "null"],
+      "airbyte_type": "string"
+    }
+  }
+}
