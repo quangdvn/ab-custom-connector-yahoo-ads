@@ -9,7 +9,6 @@ from typing import Any, List, Mapping, Optional, Tuple
 import requests  # type: ignore[import]
 from airbyte_cdk.models import ConfiguredAirbyteCatalog
 from requests import adapters as request_adapters
-
 # type: ignore[import]
 from requests.exceptions import HTTPError, RequestException
 
@@ -46,138 +45,88 @@ LOOSE_TYPES = [
     "calculated",
 ]
 
-# The following objects have certain WHERE clause restrictions so we exclude them.
-QUERY_RESTRICTED_SALESFORCE_OBJECTS = [
-    "Announcement",
-    "AppTabMember",
-    "CollaborationGroupRecord",
-    "ColorDefinition",
-    "ContentDocumentLink",
-    "ContentFolderItem",
-    "ContentFolderMember",
-    "DataStatistics",
-    "DatacloudDandBCompany",
-    "EntityParticle",
-    "FieldDefinition",
-    "FieldHistoryArchive",
-    "FlexQueueItem",
-    "FlowVariableView",
-    "FlowVersionView",
-    "IconDefinition",
-    "IdeaComment",
-    "NetworkUserHistoryRecent",
-    "OwnerChangeOptionInfo",
-    "PicklistValueInfo",
-    "PlatformAction",
-    "RelationshipDomain",
-    "RelationshipInfo",
-    "SearchLayout",
-    "SiteDetail",
-    "UserEntityAccess",
-    "UserFieldAccess",
-    "Vote",
-]
+# YAHOO_ADS_SEARCH_BASE_URL =
 
-# The following objects are not supported by the query method being used.
-QUERY_INCOMPATIBLE_SALESFORCE_OBJECTS = [
-    "AIPredictionEvent",
-    "ActivityHistory",
-    "AggregateResult",
-    "ApiAnomalyEvent",
-    "ApiEventStream",
-    "AssetTokenEvent",
-    "AsyncOperationEvent",
-    "AsyncOperationStatus",
-    "AttachedContentDocument",
-    "AttachedContentNote",
-    "BatchApexErrorEvent",
-    "BulkApiResultEvent",
-    "CombinedAttachment",
-    "ConcurLongRunApexErrEvent",
-    "ContentBody",
-    "CredentialStuffingEvent",
-    "DataType",
-    "DatacloudAddress",
-    "EmailStatus",
-    "FeedLike",
-    "FeedSignal",
-    "FeedTrackedChange",
-    "FlowExecutionErrorEvent",
-    "FolderedContentDocument",
-    "LightningUriEventStream",
-    "ListViewChartInstance",
-    "ListViewEventStream",
-    "LoginAsEventStream",
-    "LoginEventStream",
-    "LogoutEventStream",
-    "LookedUpFromActivity",
-    "Name",
-    "NoteAndAttachment",
-    "OpenActivity",
-    "OrgLifecycleNotification",
-    "OutgoingEmail",
-    "OutgoingEmailRelation",
-    "OwnedContentDocument",
-    "PlatformStatusAlertEvent",
-    "ProcessExceptionEvent",
-    "ProcessInstanceHistory",
-    "QuoteTemplateRichTextData",
-    "RemoteKeyCalloutEvent",
-    "ReportAnomalyEvent",
-    "ReportEventStream",
-    "SessionHijackingEvent",
-    "UriEventStream",
-    "UserRecordAccess",
-]
+YAHOO_ADS_DISPLAY = {
+    'BASE_URL': "https://ads-display.yahooapis.jp/api/v10/ReportDefinitionService",
+    'AD_STREAM_FIELDS': [
+        {'request_name': "ACCOUNT_ID", 'api_name': "アカウントID"},
+        {'request_name': "ACCOUNT_NAME", 'api_name': "アカウント名"},
+        {'request_name': "DAY", 'api_name': "日"},
+        {'request_name': "DEVICE", 'api_name': "デバイス"},
+        {'request_name': "CAMPAIGN_ID", 'api_name': "キャンペーンID"},
+        {'request_name': "CAMPAIGN_NAME", 'api_name': "キャンペーン名"},
+        {'request_name': "ADGROUP_ID", 'api_name': "広告グループID"},
+        {'request_name': "ADGROUP_NAME", 'api_name': "広告グループ名"},
+        {'request_name': "AD_ID", 'api_name': "広告ID"},
+        {'request_name': "AD_NAME", 'api_name': "広告名"},
+        {'request_name': "SEARCHKEYWORD_ID", 'api_name': "サーチキーワードID"},
+        {'request_name': "SEARCHKEYWORD", 'api_name': "サーチキーワード"},
+        {'request_name': "COST", 'api_name': "コスト"},
+        # {'request_name': "IMPS", 'api_name': "インプレッション数"},
+        # {:request_name=>"VIEWABLE_IMPS", :api_name=>"ビューアブルインプレッション数"},
+        # {:request_name=>"CLICK", :api_name=>"クリック数"},
+        # {'request_name': "CLICK_RATE", 'api_name': "クリック率"},
+        # {'request_name': "CONVERSIONS", 'api_name': "コンバージョン数"},
+        # {'request_name': "CONV_RATE", 'api_name': "コンバージョン率"},
+        # {:request_name=>"AVG_CPC", :api_name=>"平均CPC"},
+        # {:request_name=>"AVG_CPM", :api_name=>"平均CPM"},
+        # {:request_name=>"AVG_DELIVER_RANK", :api_name=>"avgDeliverRank"},
+    ]
+}
 
-UNSUPPORTED_BULK_API_SALESFORCE_OBJECTS = [
-    "AcceptedEventRelation",
-    "AssetTokenEvent",
-    "AttachedContentNote",
-    "Attachment",
-    "CaseStatus",
-    "ContractStatus",
-    "DeclinedEventRelation",
-    "EventWhoRelation",
-    "FieldSecurityClassification",
-    "KnowledgeArticle",
-    "KnowledgeArticleVersion",
-    "KnowledgeArticleVersionHistory",
-    "KnowledgeArticleViewStat",
-    "KnowledgeArticleVoteStat",
-    "OrderStatus",
-    "PartnerRole",
-    "QuoteTemplateRichTextData",
-    "RecentlyViewed",
-    "ServiceAppointmentStatus",
-    "SolutionStatus",
-    "TaskPriority",
-    "TaskStatus",
-    "TaskWhoRelation",
-    "UndecidedEventRelation",
-]
-
-UNSUPPORTED_FILTERING_STREAMS = [
-    "ApiEvent",
-    "BulkApiResultEventStore",
-    "EmbeddedServiceDetail",
-    "EmbeddedServiceLabel",
-    "FormulaFunction",
-    "FormulaFunctionAllowedType",
-    "FormulaFunctionCategory",
-    "IdentityProviderEventStore",
-    "IdentityVerificationEvent",
-    "LightningUriEvent",
-    "ListViewEvent",
-    "LoginAsEvent",
-    "LoginEvent",
-    "LogoutEvent",
-    "Publisher",
-    "RecordActionHistory",
-    "ReportEvent",
-    "TabDefinition",
-    "UriEvent",
-]
+YAHOO_ADS_SEARCH = {
+    'BASE_URL': "https://ads-search.yahooapis.jp/api/v10/ReportDefinitionService",
+    'AD_STREAM_FIELDS': [
+        {'request_name': "ACCOUNT_ID", 'api_name': "アカウントID"},
+        {'request_name': "ACCOUNT_NAME", 'api_name': "アカウント名"},
+        {'request_name': "DAY", 'api_name': "日"},
+        {'request_name': "DEVICE", 'api_name': "デバイス"},
+        {'request_name': "CAMPAIGN_ID", 'api_name': "キャンペーンID"},
+        {'request_name': "CAMPAIGN_NAME", 'api_name': "キャンペーン名"},
+        {'request_name': "ADGROUP_ID", 'api_name': "広告グループID"},
+        {'request_name': "ADGROUP_NAME", 'api_name': "広告グループ名"},
+        {'request_name': "AD_ID", 'api_name': "広告ID"},
+        {'request_name': "AD_NAME", 'api_name': "広告名"},
+        {'request_name': "COST", 'api_name': "コスト"},
+        {'request_name': "IMPS", 'api_name': "インプレッション数"},
+        {'request_name': "CLICKS", 'api_name': "クリック数"},
+        {'request_name': "CLICK_RATE", 'api_name': "クリック率"},
+        {'request_name': "AVG_CPC", 'api_name': "平均CPC"},
+        {'request_name': "CONVERSIONS", 'api_name': "コンバージョン数"},
+        {'request_name': "CONV_RATE", 'api_name': "コンバージョン率"},
+    ],
+    "AD_CONVERSION_FIELDS": [
+        {'request_name': "ACCOUNT_ID", 'api_name': "アカウントID"},
+        {'request_name': "ACCOUNT_NAME", 'api_name': "アカウント名"},
+        {'request_name': "DAY", 'api_name': "日"},
+        {'request_name': "DEVICE", 'api_name': "デバイス"},
+        {'request_name': "CAMPAIGN_ID", 'api_name': "キャンペーンID"},
+        {'request_name': "ADGROUP_ID", 'api_name': "広告グループID"},
+        {'request_name': "AD_ID", 'api_name': "広告ID"},
+        {'request_name': "CONVERSION_NAME", 'api_name': "コンバージョン名"},
+        {'request_name': "CONVERSIONS", 'api_name': "コンバージョン数"},
+    ],
+    "KEYWORDS_FIELDS": [
+        {'request_name': "ACCOUNT_ID", 'api_name': "アカウントID"},
+        {'request_name': "ACCOUNT_NAME", 'api_name': "アカウント名"},
+        {'request_name': "DAY", 'api_name': "日"},
+        {'request_name': "DEVICE", 'api_name': "デバイス"},
+        {'request_name': "CAMPAIGN_ID", 'api_name': "キャンペーンID"},
+        {'request_name': "CAMPAIGN_NAME", 'api_name': "キャンペーン名"},
+        {'request_name': "ADGROUP_ID", 'api_name': "広告グループID"},
+        {'request_name': "ADGROUP_NAME", 'api_name': "広告グループ名"},
+        {'request_name': "AD_ID", 'api_name': "広告ID"},
+        {'request_name': "AD_NAME", 'api_name': "広告名"},
+        {'request_name': "COST", 'api_name': "コスト"},
+        {'request_name': "IMPS", 'api_name': "インプレッション数"},
+        {'request_name': "CLICKS", 'api_name': "クリック数"},
+        {'request_name': "CLICK_RATE", 'api_name': "クリック率"},
+        {'request_name': "AVG_CPC", 'api_name': "平均CPC"},
+        {'request_name': "CONVERSIONS", 'api_name': "コンバージョン数"},
+        {'request_name': "CONV_RATE", 'api_name': "コンバージョン率"}
+    ]
+}
 
 
 class YahooAds:
@@ -190,7 +139,6 @@ class YahooAds:
   def __init__(
       self,
       refresh_token: str = None,
-      # token: str = None,
       client_id: str = None,
       client_secret: str = None,
       start_date: str = None,
@@ -199,62 +147,15 @@ class YahooAds:
     self.refresh_token = refresh_token
     self.client_id = client_id
     self.client_secret = client_secret
+    self.start_date = start_date
     self.access_token = None
+
     # self.instance_url = "https://ads-search.yahooapis.jp/api/"
     self.session = requests.Session()
     # Change the connection pool size. Default value is not enough for parallel tasks
     adapter = request_adapters.HTTPAdapter(
         pool_connections=self.parallel_tasks_size, pool_maxsize=self.parallel_tasks_size)
     self.session.mount("https://", adapter)
-
-    self.start_date = start_date
-
-  # def _get_standard_headers(self) -> Mapping[str, str]:
-  #     return {"Authorization": "Bearer {}".format(self.access_token)}
-
-  # def get_streams_black_list(self) -> List[str]:
-  #     return QUERY_RESTRICTED_SALESFORCE_OBJECTS + QUERY_INCOMPATIBLE_SALESFORCE_OBJECTS
-
-  # def filter_streams(self, stream_name: str) -> bool:
-  #     # REST and BULK API do not support all entities that end with `ChangeEvent`.
-  #     if stream_name.endswith("ChangeEvent") or stream_name in self.get_streams_black_list():
-  #         return False
-  #     return True
-
-  # def get_validated_streams(self, config: Mapping[str, Any], catalog: ConfiguredAirbyteCatalog = None) -> Mapping[str, Any]:
-  #     """Selects all validated streams with additional filtering:
-  #     1) skip all sobjects with negative value of the flag "queryable"
-  #     2) user can set search criterias of necessary streams
-  #     3) selection by catalog settings
-  #     """
-  #     stream_objects = {}
-  #     for stream_object in self.describe()["sobjects"]:
-  #         if stream_object["queryable"]:
-  #             stream_objects[stream_object.pop("name")] = stream_object
-  #         else:
-  #             self.logger.warn(
-  #                 f"Stream {stream_object['name']} is not queryable and will be ignored.")
-
-  #     if catalog:
-  #         return {
-  #             configured_stream.stream.name: stream_objects[configured_stream.stream.name]
-  #             for configured_stream in catalog.streams
-  #             if configured_stream.stream.name in stream_objects
-  #         }
-
-  #     stream_names = list(stream_objects.keys())
-  #     if config.get("streams_criteria"):
-  #         filtered_stream_list = []
-  #         for stream_criteria in config["streams_criteria"]:
-  #             filtered_stream_list += filter_streams_by_criteria(
-  #                 streams_list=stream_names, search_word=stream_criteria[
-  #                     "value"], search_criteria=stream_criteria["criteria"]
-  #             )
-  #         stream_names = list(set(filtered_stream_list))
-
-  #     validated_streams = [
-  #         stream_name for stream_name in stream_names if self.filter_streams(stream_name)]
-  #     return {stream_name: sobject_options for stream_name, sobject_options in stream_objects.items() if stream_name in validated_streams}
 
   @default_backoff_handler(max_tries=5, factor=5)
   def _make_request(
@@ -296,135 +197,3 @@ class YahooAds:
 
     auth = resp.json()
     self.access_token = auth["access_token"]
-
-  # def describe(self, sobject: str = None, sobject_options: Mapping[str, Any] = None) -> Mapping[str, Any]:
-  #     """Describes all objects or a specific object"""
-  #     headers = self._get_standard_headers()
-
-  #     body = {
-  #         # "accountId": account_id,
-  #         # "reportJobId": report_job_id,
-  #     }
-
-  #     # endpoint = "sobjects" if not sobject else f"sobjects/{sobject}/describe"
-  #     endpoint = "add"
-
-  #     url = f"{self.instance_url}/{self.version}/ReportDefinitionService/{endpoint}"
-  #     resp = self._make_request("POST", url, body=body, headers=headers)
-  #     import pdb
-  #     pdb.set_trace()
-
-  #     if resp.status_code == 404 and sobject:
-  #         self.logger.error(
-  #             f"not found a description for the sobject '{sobject}'. Sobject options: {sobject_options}")
-  #     resp_json: Mapping[str, Any] = resp.json()
-  #     print(resp)
-  #     return resp_json
-
-  # def generate_schema(self, stream_name: str = None, stream_options: Mapping[str, Any] = None) -> Mapping[str, Any]:
-  #     response = self.describe(stream_name, stream_options)
-  #     schema = {"$schema": "http://json-schema.org/draft-07/schema#",
-  #               "type": "object", "additionalProperties": True, "properties": {}}
-  #     for field in response["fields"]:
-  #         schema["properties"][field["name"]] = self.field_to_property_schema(
-  #             field)  # type: ignore[index]
-  #     return schema
-
-  # def generate_schemas(self, stream_objects: Mapping[str, Any]) -> Mapping[str, Any]:
-  #     def load_schema(name: str, stream_options: Mapping[str, Any]) -> Tuple[str, Optional[Mapping[str, Any]], Optional[str]]:
-  #         try:
-  #             result = self.generate_schema(
-  #                 stream_name=name, stream_options=stream_options)
-  #         except RequestException as e:
-  #             return name, None, str(e)
-  #         return name, result, None
-
-  #     stream_names = list(stream_objects.keys())
-  #     # try to split all requests by chunks
-  #     stream_schemas = {}
-  #     for i in range(0, len(stream_names), self.parallel_tasks_size):
-  #         chunk_stream_names = stream_names[i: i + self.parallel_tasks_size]
-  #         with concurrent.futures.ThreadPoolExecutor(max_workers=len(chunk_stream_names)) as executor:
-  #             for stream_name, schema, err in executor.map(
-  #                 lambda args: load_schema(
-  #                     *args), [(stream_name, stream_objects[stream_name]) for stream_name in chunk_stream_names]
-  #             ):
-  #                 if err:
-  #                     self.logger.error(
-  #                         f"Loading error of the {stream_name} schema: {err}")
-  #                     continue
-  #                 stream_schemas[stream_name] = schema
-  #     return stream_schemas
-
-  # @staticmethod
-  # def get_pk_and_replication_key(json_schema: Mapping[str, Any]) -> Tuple[Optional[str], Optional[str]]:
-  #     fields_list = json_schema.get("properties", {}).keys()
-
-  #     pk = "Id" if "Id" in fields_list else None
-  #     replication_key = None
-  #     if "SystemModstamp" in fields_list:
-  #         replication_key = "SystemModstamp"
-  #     elif "LastModifiedDate" in fields_list:
-  #         replication_key = "LastModifiedDate"
-  #     elif "CreatedDate" in fields_list:
-  #         replication_key = "CreatedDate"
-  #     elif "LoginTime" in fields_list:
-  #         replication_key = "LoginTime"
-
-  #     return pk, replication_key
-
-  # @staticmethod
-  # def field_to_property_schema(field_params: Mapping[str, Any]) -> Mapping[str, Any]:
-  #     sf_type = field_params["type"]
-  #     property_schema = {}
-
-  #     if sf_type in STRING_TYPES:
-  #         property_schema["type"] = ["string", "null"]
-  #     elif sf_type in DATE_TYPES:
-  #         property_schema = {
-  #             "type": ["string", "null"],
-  #             # type: ignore[dict-item]
-  #             "format": "date-time" if sf_type == "datetime" else "date",
-  #         }
-  #     elif sf_type in NUMBER_TYPES:
-  #         property_schema["type"] = ["number", "null"]
-  #     elif sf_type == "address":
-  #         property_schema = {
-  #             "type": ["object", "null"],
-  #             "properties": {  # type: ignore[dict-item]
-  #                 "street": {"type": ["null", "string"]},
-  #                 "state": {"type": ["null", "string"]},
-  #                 "postalCode": {"type": ["null", "string"]},
-  #                 "city": {"type": ["null", "string"]},
-  #                 "country": {"type": ["null", "string"]},
-  #                 "longitude": {"type": ["null", "number"]},
-  #                 "latitude": {"type": ["null", "number"]},
-  #                 "geocodeAccuracy": {"type": ["null", "string"]},
-  #             },
-  #         }
-  #     elif sf_type == "base64":
-  #         # type: ignore[dict-item]
-  #         property_schema = {"type": ["string", "null"], "format": "base64"}
-  #     elif sf_type == "int":
-  #         property_schema["type"] = ["integer", "null"]
-  #     elif sf_type == "boolean":
-  #         property_schema["type"] = ["boolean", "null"]
-  #     elif sf_type in LOOSE_TYPES:
-  #         """
-  #         LOOSE_TYPES can return data of completely different types (more than 99% of them are `strings`),
-  #         and in order to avoid conflicts in schemas and destinations, we cast this data to the `string` type.
-  #         """
-  #         property_schema["type"] = ["string", "null"]
-  #     elif sf_type == "location":
-  #         property_schema = {
-  #             "type": ["object", "null"],
-  #             "properties": {  # type: ignore[dict-item]
-  #                 "longitude": {"type": ["null", "number"]},
-  #                 "latitude": {"type": ["null", "number"]},
-  #             },
-  #         }
-  #     else:
-  #         raise TypeSalesforceException(
-  #             "Found unsupported type: {}".format(sf_type))
-
-  #     return property_schema
