@@ -1,9 +1,7 @@
-#
-# Copyright (c) 2022 Airbyte, Inc., all rights reserved.
-#
-
 import concurrent.futures
+import json
 import logging
+from datetime import datetime
 from typing import Any, List, Mapping, Optional, Tuple
 
 import requests  # type: ignore[import]
@@ -45,11 +43,9 @@ LOOSE_TYPES = [
     "calculated",
 ]
 
-# YAHOO_ADS_SEARCH_BASE_URL =
-
 YAHOO_ADS_DISPLAY = {
-    'BASE_URL': "https://ads-display.yahooapis.jp/api/v10/ReportDefinitionService",
-    'AD_STREAM_FIELDS': [
+    'BASE_URL': "https://ads-display.yahooapis.jp/api/v10/ReportDefinitionService/",
+    'AD': [
         {'request_name': "ACCOUNT_ID", 'api_name': "アカウントID"},
         {'request_name': "ACCOUNT_NAME", 'api_name': "アカウント名"},
         {'request_name': "DAY", 'api_name': "日"},
@@ -76,8 +72,8 @@ YAHOO_ADS_DISPLAY = {
 }
 
 YAHOO_ADS_SEARCH = {
-    'BASE_URL': "https://ads-search.yahooapis.jp/api/v10/ReportDefinitionService",
-    'AD_STREAM_FIELDS': [
+    'BASE_URL': "https://ads-search.yahooapis.jp/api/v10/ReportDefinitionService/",
+    'AD': [
         {'request_name': "ACCOUNT_ID", 'api_name': "アカウントID"},
         {'request_name': "ACCOUNT_NAME", 'api_name': "アカウント名"},
         {'request_name': "DAY", 'api_name': "日"},
@@ -96,7 +92,7 @@ YAHOO_ADS_SEARCH = {
         {'request_name': "CONVERSIONS", 'api_name': "コンバージョン数"},
         {'request_name': "CONV_RATE", 'api_name': "コンバージョン率"},
     ],
-    "AD_CONVERSION_FIELDS": [
+    "AD_CONVERSION": [
         {'request_name': "ACCOUNT_ID", 'api_name': "アカウントID"},
         {'request_name': "ACCOUNT_NAME", 'api_name': "アカウント名"},
         {'request_name': "DAY", 'api_name': "日"},
@@ -107,7 +103,7 @@ YAHOO_ADS_SEARCH = {
         {'request_name': "CONVERSION_NAME", 'api_name': "コンバージョン名"},
         {'request_name': "CONVERSIONS", 'api_name': "コンバージョン数"},
     ],
-    "KEYWORDS_FIELDS": [
+    "KEYWORDS": [
         {'request_name': "ACCOUNT_ID", 'api_name': "アカウントID"},
         {'request_name': "ACCOUNT_NAME", 'api_name': "アカウント名"},
         {'request_name': "DAY", 'api_name': "日"},
@@ -157,6 +153,61 @@ class YahooAds:
         pool_connections=self.parallel_tasks_size, pool_maxsize=self.parallel_tasks_size)
     self.session.mount("https://", adapter)
 
+  def login(self):
+    login_url = f"https://biz-oauth.yahoo.co.jp/oauth/v1/token"
+    login_body = {
+        "grant_type": "refresh_token",
+        "client_id": self.client_id,
+        "client_secret": self.client_secret,
+        "refresh_token": self.refresh_token,
+    }
+    resp = self._make_request(http_method="POST",
+                              url=login_url,
+                              body=login_body,
+                              headers={
+                                  "Content-Type": "application/x-www-form-urlencoded"
+                              }
+                              )
+
+    auth = resp.json()
+    self.access_token = auth["access_token"]
+
+  def add_report(self, ads_type: str, stream: str, account_id: str, start_date: str) -> str:
+    current_date = datetime.today().strftime('%Y%m%d')
+    if ads_type == 'YDN':
+      add_url = f"{YAHOO_ADS_DISPLAY['BASE_URL']}add"
+    elif ads_type == 'YSS':
+      add_url = f"{YAHOO_ADS_SEARCH['BASE_URL']}add"
+    add_config = {
+        "accountId": account_id,
+        "operand": [
+            {
+                "dateRange": {
+                    "startDate": start_date,
+                    "endDate": current_date
+                },
+                "fields": self._extract_report_fields(ads_type, stream),
+                "reportDateRangeType": "CUSTOM_DATE",
+                "reportDownloadEncode": "UTF8",
+                "reportDownloadFormat": "CSV",
+                "reportLanguage": "JA",
+                "reportName": f"YahooReport_{current_date}",
+                "reportType": stream if stream == "KEYWORDS" else "AD"
+            }
+        ]
+    }
+    headers = self._get_standard_headers()
+
+    resp = self._make_request(
+        http_method='POST',
+        url=add_url,
+        body=json.dumps(add_config),
+        headers=headers).json()
+    if not resp['rval']['values'][0]['operationSucceeded']:
+      error = resp['rval']['values'][0]['errors']
+      raise Exception(f'InvalidEnumError: {json.dumps(error)}')
+    return str(resp['rval']['values'][0]['reportDefinition']['reportJobId'])
+
   @default_backoff_handler(max_tries=5, factor=5)
   def _make_request(
       self,
@@ -179,21 +230,14 @@ class YahooAds:
       raise
     return resp
 
-  def login(self):
-    login_url = f"https://biz-oauth.yahoo.co.jp/oauth/v1/token"
-    login_body = {
-        "grant_type": "refresh_token",
-        "client_id": self.client_id,
-        "client_secret": self.client_secret,
-        "refresh_token": self.refresh_token,
-    }
-    resp = self._make_request(http_method="POST",
-                              url=login_url,
-                              body=login_body,
-                              headers={
-                                  "Content-Type": "application/x-www-form-urlencoded"
-                              }
-                              )
+  def _extract_report_fields(self, ads_type: str, stream: str):
+    if ads_type == 'YDN':
+      return [item['request_name'] for item in YAHOO_ADS_DISPLAY[stream]]
+    elif ads_type == 'YSS':
+      return [item['request_name'] for item in YAHOO_ADS_SEARCH[stream]]
 
-    auth = resp.json()
-    self.access_token = auth["access_token"]
+  def _get_standard_headers(self) -> Mapping[str, str]:
+    return {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer {}".format(self.access_token)
+    }

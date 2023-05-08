@@ -99,3 +99,4 @@ gha-creds-*.json
 # All redundant files and folders
 /airbyte-integrations/connectors
 /samples
+test.**

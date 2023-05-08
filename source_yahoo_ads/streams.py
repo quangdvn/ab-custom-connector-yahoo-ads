@@ -1,17 +1,13 @@
 from abc import ABC
-from typing import (Any, Iterable, List, Mapping, MutableMapping, Optional,
-                    Tuple)
+from typing import Any, Iterable, List, Mapping, MutableMapping, Optional
 
 import requests
 from airbyte_cdk.sources.streams.http import HttpStream
-from airbyte_cdk.sources.streams.http.auth import TokenAuthenticator
 
 from source_yahoo_ads.api import YAHOO_ADS_SEARCH
 
 
 class YahooSearchAdsStream(HttpStream, ABC):
-  url_base = YAHOO_ADS_SEARCH['BASE_URL']
-
   def next_page_token(self, response: requests.Response) -> Optional[Mapping[str, Any]]:
     return None
 
@@ -19,9 +15,6 @@ class YahooSearchAdsStream(HttpStream, ABC):
       self, stream_state: Mapping[str, Any], stream_slice: Mapping[str, any] = None, next_page_token: Mapping[str, Any] = None
   ) -> MutableMapping[str, Any]:
     return {}
-
-  def parse_response(self, response: requests.Response, **kwargs) -> Iterable[Mapping]:
-    yield {}
 
 
 class YahooDisplayAdsStream(HttpStream, ABC):
@@ -128,16 +121,44 @@ class IncrementalYahooDisplayAdsStream(YahooDisplayAdsStream, ABC):
 
 
 class YssAd(IncrementalYahooSearchAdsStream):
-  cursor_field = "日"
+  url_base = "https://ads-search.yahooapis.jp/api/v10/ReportDefinitionService/"
+  http_method = "POST"
 
+  cursor_field = "日"
   primary_key = ["広告ID", "日"]
 
-  def path(self, **kwargs) -> str:
-    return "yss_ad"
+  def __init__(self, account_id: str, report_job_id: str, ** kwargs):
+    super().__init__(**kwargs)
+    self.account_id = account_id
+    self.report_job_id = report_job_id
 
-  def stream_slices(self, stream_state: Mapping[str, Any] = None, **kwargs) -> Iterable[Optional[Mapping[str, any]]]:
-    raise NotImplementedError(
-        "Implement stream slices or delete this method!")
+  def path(self, **kwargs) -> str:
+    return "download"
+
+  def request_body_json(
+      self,
+      stream_state: Mapping[str, Any],
+      stream_slice: Mapping[str, Any] = None,
+      next_page_token: Mapping[str, Any] = None,
+  ) -> Optional[Mapping]:
+    body = {
+        "accountId": self.account_id,
+        "reportJobId": self.report_job_id
+    }
+    return body
+
+  def request_headers(self, *args, **kvargs) -> MutableMapping[str, Any]:
+    return {"Content-Type": "application/json"}
+
+  # TODO: Parse download response into file
+  def parse_response(self, response: requests.Response, **kwargs) -> Iterable[Mapping]:
+    print('content', response.content)
+    yield {}
+
+
+#   def stream_slices(self, stream_state: Mapping[str, Any] = None, **kwargs) -> Iterable[Optional[Mapping[str, any]]]:
+#     raise NotImplementedError(
+#         "Implement stream slices for YssAd or delete this method! ")
 
 
 class YssAdConversion(IncrementalYahooSearchAdsStream):

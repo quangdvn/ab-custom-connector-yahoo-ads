@@ -1,26 +1,52 @@
-from typing import Any, List, Mapping, Tuple
+import logging
+from typing import Any, Iterator, List, Mapping, MutableMapping, Tuple, Union
 
 import requests
 from airbyte_cdk import AirbyteLogger
+from airbyte_cdk.models import (AirbyteMessage, AirbyteStateMessage,
+                                ConfiguredAirbyteCatalog)
 from airbyte_cdk.sources import AbstractSource
 from airbyte_cdk.sources.streams import Stream
 from airbyte_cdk.sources.streams.http.auth import TokenAuthenticator
+from airbyte_cdk.utils.traced_exception import AirbyteTracedException
 
 from source_yahoo_ads.api import YAHOO_ADS_SEARCH, YahooAds
 from source_yahoo_ads.streams import YdnAd, YssAd, YssAdConversion, YssKeywords
 
 
+class AirbyteStopSync(AirbyteTracedException):
+  pass
+
+
+YAHOO_ADS_SEARCH_AD_STREAM = 0
+YAHOO_ADS_SEARCH_AD_CONVERSION_STREAM = 1
+YAHOO_ADS_SEARCH_KEYWORDS_STREAM = 2
+YAHOO_ADS_DISPLAY_AD_STREAM = 3
+
+DESIRED_STREAMS = [
+    {'ads_type': 'YSS', 'stream': 'AD'},
+    # {'ads_type': 'YSS', 'stream': 'AD_CONVERSION'},
+    # {'ads_type': 'YSS', 'stream': 'KEYWORDS'},
+    # {'ads_type': 'YDN', 'stream': 'AD'},
+]
+
+
 class SourceYahooAds(AbstractSource):
+  def __init__(self, *args, **kwargs):
+    super().__init__(*args, **kwargs)
+    self.catalog = None
+    self.config = None
+
   @staticmethod
-  def _get_yahoo_object(self, config: Mapping[str, Any]) -> YahooAds:
+  def _get_yahoo_ads_object(config: Mapping[str, Any]) -> YahooAds:
     yahoo_ads = YahooAds(**config)
     yahoo_ads.login()
     return yahoo_ads
 
   def check_connection(self, logger: AirbyteLogger, config) -> Tuple[bool, any]:
     try:
-      yahoo_object = self._get_yahoo_object(config)
-      if hasattr(yahoo_object, 'access_token'):
+      yahoo_ads_object = self._get_yahoo_ads_object(config)
+      if hasattr(yahoo_ads_object, 'access_token'):
         return True, None
       return False, "Invalid access token"
     except requests.exceptions.HTTPError as error:
@@ -32,8 +58,46 @@ class SourceYahooAds(AbstractSource):
         return False, "API Call limit is exceeded"
 
   def streams(self, config: Mapping[str, Any]) -> List[Stream]:
-    # TODO remove the authenticator if not required.
-    # Oauth2Authenticator is also available if you need oauth support
-    # auth = TokenAuthenticator(token="api_key")
-    return [YssAd()]
-    # return [YssAd(), YssAdConversion(), YssKeywords(), YdnAd()]
+    yahoo_ads_object = self._get_yahoo_ads_object(config)
+    authenticator = TokenAuthenticator(token=yahoo_ads_object.access_token)
+
+    report_job_ids = []
+    for item in DESIRED_STREAMS:
+      report_job_id = yahoo_ads_object.add_report(
+          ads_type=item['ads_type'],
+          stream=item['stream'],
+          account_id=config['account_id'],
+          start_date=config['start_date'])
+      report_job_ids.append(report_job_id)
+
+    stream_args = []
+    for report_job_id in report_job_ids:
+      stream_args.append({
+          "authenticator": authenticator,
+          "account_id": config["account_id"],
+          "report_job_id": report_job_id
+      })
+    print('ids', report_job_ids)
+
+    return [YssAd(**stream_args[YAHOO_ADS_SEARCH_AD_STREAM])]
+    # return [
+    #     YssAd(**args, report_job_ids[YAHOO_ADS_SEARCH_AD_STREAM]),
+    #     YssAdConversion(**args, report_job_ids[YAHOO_ADS_SEARCH_AD_CONVERSION_STREAM]),
+    #     YssKeywords(**args, report_job_ids[YAHOO_ADS_SEARCH_KEYWORDS_STREAM]),
+    #     YdnAd(**args, report_job_ids[YAHOO_ADS_DISPLAY_AD_STREAM])
+    # ]
+
+  def read(
+      self,
+      logger: logging.Logger,
+      config: Mapping[str, Any],
+      catalog: ConfiguredAirbyteCatalog,
+      state: Union[List[AirbyteStateMessage], MutableMapping[str, Any]] = None,
+  ) -> Iterator[AirbyteMessage]:
+    # save for use inside streams method
+    self.catalog = catalog
+
+    try:
+      yield from super().read(logger, config, catalog, state)
+    except AirbyteStopSync:
+      logger.info(f"Finished syncing {self.name}")
