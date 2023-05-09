@@ -106,15 +106,13 @@ class YssAd(IncrementalYahooSearchAdsStream):
     return {"Content-Type": "application/json"}
 
   def parse_response(self, response: requests.Response, **kwargs) -> Iterable[Mapping]:
+    # Use the generator function to iterate over the rows of data
+    csv_rows_generator = generate_temp_download(response)
 
-    temp_download_file = generate_temp_download(response)
+    # Convert the generator to a list
+    json_response = list(csv_rows_generator)
 
-    # Read content from file to return
-    filename = open(f'{temp_download_file}', 'r')
-    json_response = skip_last_line(csv.DictReader(filename))
-
-    os.remove(temp_download_file)
-    return list(json_response)
+    return json_response
 
 
 #   def stream_slices(self, stream_state: Mapping[str, Any] = None, **kwargs) -> Iterable[Optional[Mapping[str, any]]]:

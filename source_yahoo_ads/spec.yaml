@@ -8,6 +8,7 @@ connectionSpecification:
     - client_secret
     - refresh_token
     - account_id
+    - start_date
   properties:
     client_id:
       title: Client Id
@@ -39,10 +40,6 @@ connectionSpecification:
       type: ["string", "null"]
       pattern: >-
         ^[0-9]{4}[0-9]{2}[0-9]{2}$
-      # pattern: >-
-      #   ^(\\d{4})(0[1-9]|1[0-2])(0[1-9]|[12]\\d|3[01])$
-      # pattern: >-
-      #   ^(\\d{4})(0[1-9]|1[0-2])(0[1-9]|[12]\\d|30|31)$
       examples:
         - "20210725"
       order: 5

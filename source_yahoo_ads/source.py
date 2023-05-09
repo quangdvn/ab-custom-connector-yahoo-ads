@@ -22,7 +22,7 @@ class AirbyteStopSync(AirbyteTracedException):
 # Hard code the value for now
 # TODO: Implement this idea (use `/get` to check reportJobStatus and recursion until report is created)
 # https://github.com/yahoojp-marketing/ads-search-api-python-samples/blob/master/report_sample.py#L68
-REPORT_PREPARE_TIME = 15
+REPORT_PREPARE_TIME = 10
 
 YAHOO_ADS_SEARCH_AD_STREAM = 0
 YAHOO_ADS_SEARCH_AD_CONVERSION_STREAM = 1
@@ -105,11 +105,12 @@ class SourceYahooAds(AbstractSource):
     yahoo_ads_object = self._get_yahoo_ads_object(config)
     try:
       yield from super().read(logger, config, catalog, state)
-      logger.info(f" Finished syncing {self.name} successfully")
+      logger.info(f"Finished syncing {self.name} successfully")
       for report_job in self.report_jobs:
         yahoo_ads_object.remove_report(
             ads_type=report_job['ads_type'],
             report_job_id=report_job['report_job_id']
         )
+      logger.info(f"Removed reports successfully")
     except AirbyteStopSync:
       logger.info(f"Finished syncing {self.name} with error")
