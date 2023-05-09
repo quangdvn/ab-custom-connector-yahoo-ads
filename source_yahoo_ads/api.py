@@ -1,7 +1,7 @@
 import concurrent.futures
 import json
 import logging
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Any, List, Mapping, Optional, Tuple
 
 import requests  # type: ignore[import]
@@ -137,12 +137,14 @@ class YahooAds:
       refresh_token: str = None,
       client_id: str = None,
       client_secret: str = None,
+      account_id: str = None,
       start_date: str = None,
       **kwargs: Any,
   ) -> None:
     self.refresh_token = refresh_token
     self.client_id = client_id
     self.client_secret = client_secret
+    self.account_id = account_id
     self.start_date = start_date
     self.access_token = None
 
@@ -172,26 +174,26 @@ class YahooAds:
     auth = resp.json()
     self.access_token = auth["access_token"]
 
-  def add_report(self, ads_type: str, stream: str, account_id: str, start_date: str) -> str:
-    current_date = datetime.today().strftime('%Y%m%d')
+  def add_report(self, ads_type: str, stream: str, start_date: str) -> dict[str, str]:
+    end_date = (datetime.today() + timedelta(days=-1)).strftime('%Y%m%d')
     if ads_type == 'YDN':
       add_url = f"{YAHOO_ADS_DISPLAY['BASE_URL']}add"
     elif ads_type == 'YSS':
       add_url = f"{YAHOO_ADS_SEARCH['BASE_URL']}add"
     add_config = {
-        "accountId": account_id,
+        "accountId": self.account_id,
         "operand": [
             {
                 "dateRange": {
                     "startDate": start_date,
-                    "endDate": current_date
+                    "endDate": end_date
                 },
                 "fields": self._extract_report_fields(ads_type, stream),
                 "reportDateRangeType": "CUSTOM_DATE",
                 "reportDownloadEncode": "UTF8",
                 "reportDownloadFormat": "CSV",
                 "reportLanguage": "JA",
-                "reportName": f"YahooReport_{current_date}",
+                "reportName": f"YahooReport_{end_date}",
                 "reportType": stream if stream == "KEYWORDS" else "AD"
             }
         ]
@@ -206,7 +208,35 @@ class YahooAds:
     if not resp['rval']['values'][0]['operationSucceeded']:
       error = resp['rval']['values'][0]['errors']
       raise Exception(f'InvalidEnumError: {json.dumps(error)}')
-    return str(resp['rval']['values'][0]['reportDefinition']['reportJobId'])
+    return {
+        'ads_type': ads_type,
+        'report_job_id': str(resp['rval']['values'][0]['reportDefinition']['reportJobId'])
+    }
+
+  def remove_report(self, ads_type: str, report_job_id: str) -> bool:
+    if ads_type == 'YDN':
+      remove_url = f"{YAHOO_ADS_DISPLAY['BASE_URL']}remove"
+    elif ads_type == 'YSS':
+      remove_url = f"{YAHOO_ADS_SEARCH['BASE_URL']}remove"
+    remove_config = {
+        "accountId": self.account_id,
+        "operand": [
+            {
+                "reportJobId": report_job_id
+            }
+        ]
+    }
+    headers = self._get_standard_headers()
+
+    resp = self._make_request(
+        http_method='POST',
+        url=remove_url,
+        body=json.dumps(remove_config),
+        headers=headers).json()
+    if not resp['rval']['values'][0]['operationSucceeded']:
+      error = resp['rval']['values'][0]['errors']
+      raise Exception(f'InvalidEnumError: {json.dumps(error)}')
+    return resp['rval']['values'][0]['operationSucceeded']
 
   @default_backoff_handler(max_tries=5, factor=5)
   def _make_request(

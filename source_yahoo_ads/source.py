@@ -1,4 +1,5 @@
 import logging
+import time
 from typing import Any, Iterator, List, Mapping, MutableMapping, Tuple, Union
 
 import requests
@@ -18,6 +19,11 @@ class AirbyteStopSync(AirbyteTracedException):
   pass
 
 
+# Hard code the value for now
+# TODO: Implement this idea (use `/get` to check reportJobStatus and recursion until report is created)
+# https://github.com/yahoojp-marketing/ads-search-api-python-samples/blob/master/report_sample.py#L68
+REPORT_PREPARE_TIME = 15
+
 YAHOO_ADS_SEARCH_AD_STREAM = 0
 YAHOO_ADS_SEARCH_AD_CONVERSION_STREAM = 1
 YAHOO_ADS_SEARCH_KEYWORDS_STREAM = 2
@@ -36,6 +42,7 @@ class SourceYahooAds(AbstractSource):
     super().__init__(*args, **kwargs)
     self.catalog = None
     self.config = None
+    self.report_jobs = []
 
   @staticmethod
   def _get_yahoo_ads_object(config: Mapping[str, Any]) -> YahooAds:
@@ -61,23 +68,24 @@ class SourceYahooAds(AbstractSource):
     yahoo_ads_object = self._get_yahoo_ads_object(config)
     authenticator = TokenAuthenticator(token=yahoo_ads_object.access_token)
 
-    report_job_ids = []
     for item in DESIRED_STREAMS:
-      report_job_id = yahoo_ads_object.add_report(
+      report_job = yahoo_ads_object.add_report(
           ads_type=item['ads_type'],
           stream=item['stream'],
-          account_id=config['account_id'],
           start_date=config['start_date'])
-      report_job_ids.append(report_job_id)
+      self.report_jobs.append(report_job)
 
     stream_args = []
-    for report_job_id in report_job_ids:
+    for report_job in self.report_jobs:
       stream_args.append({
           "authenticator": authenticator,
           "account_id": config["account_id"],
-          "report_job_id": report_job_id
+          "report_job_id": report_job['report_job_id']
       })
-    print('ids', report_job_ids)
+    # For checking report jobs, delete later
+    print('ids', self.report_jobs)
+
+    time.sleep(REPORT_PREPARE_TIME)
 
     return [YssAd(**stream_args[YAHOO_ADS_SEARCH_AD_STREAM])]
     # return [
@@ -94,10 +102,14 @@ class SourceYahooAds(AbstractSource):
       catalog: ConfiguredAirbyteCatalog,
       state: Union[List[AirbyteStateMessage], MutableMapping[str, Any]] = None,
   ) -> Iterator[AirbyteMessage]:
-    # save for use inside streams method
-    self.catalog = catalog
-
+    yahoo_ads_object = self._get_yahoo_ads_object(config)
     try:
       yield from super().read(logger, config, catalog, state)
+      logger.info(f" Finished syncing {self.name} successfully")
+      for report_job in self.report_jobs:
+        yahoo_ads_object.remove_report(
+            ads_type=report_job['ads_type'],
+            report_job_id=report_job['report_job_id']
+        )
     except AirbyteStopSync:
-      logger.info(f"Finished syncing {self.name}")
+      logger.info(f"Finished syncing {self.name} with error")
