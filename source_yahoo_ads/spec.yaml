@@ -12,32 +12,32 @@ connectionSpecification:
   properties:
     client_id:
       title: Client Id
-      description: Client Id
+      description: YahooAds開発者向けアプリケーションのクライアントIDです。
       type: string
       airbyte_secret: true
       order: 1
     client_secret:
       title: Client Secret
-      description: Client Secret
+      description: YahooAds開発者向けアプリケーションのクライアントシークレットです。
       type: string
       airbyte_secret: true
       order: 2
     refresh_token:
       title: Refresh Token
-      description: Refresh Token
+      description: 新しいアクセストークンを取得するためのトークンです。
       type: string
       airbyte_secret: true
       order: 3
     account_id:
       title: Account id
-      description: Account id
+      description: YahooAds APIからデータを取得する際に使用するYahooAds広告のアカウントIDです。
       type: string
       order: 4
     start_date:
       title: Start Date
       description: >-
-        Enter the date in the YYYYMMDD format. Airbyte will replicate the data added on and after this date. If this field is blank, Airbyte will replicate all data.
-      type: ["string", "null"]
+        データ取得期間の開始日 (フォーマット: YYYYMMDD 。例. 20230101)。この開始日より前のデータは取得されません。
+      type: ["string"]
       pattern: >-
         ^[0-9]{4}[0-9]{2}[0-9]{2}$
       examples:
