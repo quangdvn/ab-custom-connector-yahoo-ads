@@ -13,36 +13,6 @@ from requests.exceptions import HTTPError, RequestException
 from .exceptions import TypeYahooAdsException
 from .rate_limiting import default_backoff_handler
 
-# from .utils import filter_streams_by_criteria
-
-STRING_TYPES = [
-    "byte",
-    "combobox",
-    "complexvalue",
-    "datacategorygroupreference",
-    "email",
-    "encryptedstring",
-    "id",
-    "json",
-    "masterrecord",
-    "multipicklist",
-    "phone",
-    "picklist",
-    "reference",
-    "string",
-    "textarea",
-    "time",
-    "url",
-]
-NUMBER_TYPES = ["currency", "double", "long", "percent"]
-DATE_TYPES = ["date", "datetime"]
-LOOSE_TYPES = [
-    "anyType",
-    # A calculated field's type can be any of the supported
-    # formula data types (see https://developer.salesforce.com/docs/#i1435527)
-    "calculated",
-]
-
 YAHOO_ADS_DISPLAY = {
     'BASE_URL': "https://ads-display.yahooapis.jp/api/v10/ReportDefinitionService/",
     'AD': [
@@ -59,15 +29,15 @@ YAHOO_ADS_DISPLAY = {
         {'request_name': "SEARCHKEYWORD_ID", 'api_name': "サーチキーワードID"},
         {'request_name': "SEARCHKEYWORD", 'api_name': "サーチキーワード"},
         {'request_name': "COST", 'api_name': "コスト"},
-        # {'request_name': "IMPS", 'api_name': "インプレッション数"},
-        # {:request_name=>"VIEWABLE_IMPS", :api_name=>"ビューアブルインプレッション数"},
-        # {:request_name=>"CLICK", :api_name=>"クリック数"},
-        # {'request_name': "CLICK_RATE", 'api_name': "クリック率"},
-        # {'request_name': "CONVERSIONS", 'api_name': "コンバージョン数"},
-        # {'request_name': "CONV_RATE", 'api_name': "コンバージョン率"},
-        # {:request_name=>"AVG_CPC", :api_name=>"平均CPC"},
-        # {:request_name=>"AVG_CPM", :api_name=>"平均CPM"},
-        # {:request_name=>"AVG_DELIVER_RANK", :api_name=>"avgDeliverRank"},
+        {'request_name': "IMPS", 'api_name': "インプレッション数"},
+        {'request_name': "VIEWABLE_IMPS", 'api_name': "ビューアブルインプレッション数"},
+        {'request_name': "CLICK", 'api_name': "クリック数"},
+        {'request_name': "CLICK_RATE", 'api_name': "クリック率"},
+        {'request_name': "CONVERSIONS", 'api_name': "コンバージョン数"},
+        {'request_name': "CONV_RATE", 'api_name': "コンバージョン率"},
+        {'request_name': "AVG_CPC", 'api_name': "平均CPC"},
+        {'request_name': "AVG_CPM", 'api_name': "平均CPM"},
+        {'request_name': "AVG_DELIVER_RANK", 'api_name': "平均掲載順位"},
     ]
 }
 
@@ -112,8 +82,6 @@ YAHOO_ADS_SEARCH = {
         {'request_name': "CAMPAIGN_NAME", 'api_name': "キャンペーン名"},
         {'request_name': "ADGROUP_ID", 'api_name': "広告グループID"},
         {'request_name': "ADGROUP_NAME", 'api_name': "広告グループ名"},
-        {'request_name': "AD_ID", 'api_name': "広告ID"},
-        {'request_name': "AD_NAME", 'api_name': "広告名"},
         {'request_name': "COST", 'api_name': "コスト"},
         {'request_name': "IMPS", 'api_name': "インプレッション数"},
         {'request_name': "CLICKS", 'api_name': "クリック数"},
@@ -127,10 +95,7 @@ YAHOO_ADS_SEARCH = {
 
 class YahooAds:
   logger = logging.getLogger("airbyte")
-  version = "v10"
   parallel_tasks_size = 100
-  # Request Size Limits
-  REQUEST_SIZE_LIMITS = 16_384
 
   def __init__(
       self,
@@ -148,7 +113,6 @@ class YahooAds:
     self.start_date = start_date
     self.access_token = None
 
-    # self.instance_url = "https://ads-search.yahooapis.jp/api/"
     self.session = requests.Session()
     # Change the connection pool size. Default value is not enough for parallel tasks
     adapter = request_adapters.HTTPAdapter(
@@ -176,10 +140,6 @@ class YahooAds:
 
   def add_report(self, ads_type: str, stream: str, start_date: str) -> dict[str, str]:
     end_date = (datetime.today() + timedelta(days=-1)).strftime('%Y%m%d')
-    if ads_type == 'YDN':
-      add_url = f"{YAHOO_ADS_DISPLAY['BASE_URL']}add"
-    elif ads_type == 'YSS':
-      add_url = f"{YAHOO_ADS_SEARCH['BASE_URL']}add"
     add_config = {
         "accountId": self.account_id,
         "operand": [
@@ -194,10 +154,16 @@ class YahooAds:
                 "reportDownloadFormat": "CSV",
                 "reportLanguage": "JA",
                 "reportName": f"YahooReport_{end_date}",
-                "reportType": stream if stream == "KEYWORDS" else "AD"
+                "reportSkipReportSummary": "TRUE"
             }
         ]
     }
+    if ads_type == 'YDN':
+      add_url = f"{YAHOO_ADS_DISPLAY['BASE_URL']}add"
+    elif ads_type == 'YSS':
+      add_url = f"{YAHOO_ADS_SEARCH['BASE_URL']}add"
+      add_config["operand"][0]["reportType"] = stream if stream == "KEYWORDS" else "AD"
+
     headers = self._get_standard_headers()
 
     resp = self._make_request(

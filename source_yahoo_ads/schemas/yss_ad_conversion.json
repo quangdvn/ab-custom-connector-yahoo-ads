@@ -2,41 +2,41 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "type": "object",
   "properties": {
-    "ACCOUNT_ID": {
+    "アカウントID": {
       "type": ["string", "null"],
       "airbyte_type": "string"
     },
-    "ACCOUNT_NAME": {
+    "アカウント名": {
       "type": ["string", "null"],
       "airbyte_type": "string"
     },
-    "DAY": {
+    "日": {
       "type": ["string", "null"],
       "format": "date",
       "airbyte_type": "string",
       "airbyte_format": "%Y-%m-%d"
     },
-    "DEVICE": {
+    "デバイス": {
       "type": ["string", "null"],
       "airbyte_type": "string"
     },
-    "CAMPAIGN_ID": {
+    "キャンペーンID": {
       "type": ["integer", "null"],
       "airbyte_type": "integer"
     },
-    "ADGROUP_ID": {
+    "広告グループID": {
       "type": ["integer", "null"],
       "airbyte_type": "integer"
     },
-    "AD_ID": {
+    "広告ID": {
       "type": ["integer", "null"],
       "airbyte_type": "integer"
     },
-    "CONVERSION_NAME": {
+    "コンバージョン名": {
       "type": ["string", "null"],
       "airbyte_type": "string"
     },
-    "CONVERSIONS": {
+    "コンバージョン数": {
       "type": ["number", "null"],
       "airbyte_type": "number"
     }

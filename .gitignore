@@ -100,4 +100,5 @@ gha-creds-*.json
 /airbyte-integrations/connectors
 /samples
 /download
+/test
 test.**

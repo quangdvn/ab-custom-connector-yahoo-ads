@@ -1,9 +1,5 @@
 import csv
 import io
-import os
-import secrets
-import tempfile
-from datetime import date
 
 import requests
 
@@ -20,22 +16,15 @@ def generate_temp_download(response: requests.models.Response):
   buffer.seek(0)
 
   # Parse the CSV data using csv.DictReader()
-  reader = skip_last_line(csv.DictReader(io.TextIOWrapper(buffer, encoding='utf-8'),
+  reader = csv.DictReader(io.TextIOWrapper(buffer, encoding='utf-8'),
                           delimiter=',',
                           quotechar='"',
                           quoting=csv.QUOTE_MINIMAL,
                           skipinitialspace=True,
                           escapechar='\\',
                           doublequote=True,
-                          strict=True))
+                          strict=True)
 
   # Yield each row from the CSV data
   for row in reader:
     yield row
-
-
-def skip_last_line(iterator):
-  prev = next(iterator)
-  for item in iterator:
-    yield prev
-    prev = item

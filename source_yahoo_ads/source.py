@@ -31,9 +31,9 @@ YAHOO_ADS_DISPLAY_AD_STREAM = 3
 
 DESIRED_STREAMS = [
     {'ads_type': 'YSS', 'stream': 'AD'},
-    # {'ads_type': 'YSS', 'stream': 'AD_CONVERSION'},
-    # {'ads_type': 'YSS', 'stream': 'KEYWORDS'},
-    # {'ads_type': 'YDN', 'stream': 'AD'},
+    {'ads_type': 'YSS', 'stream': 'AD_CONVERSION'},
+    {'ads_type': 'YSS', 'stream': 'KEYWORDS'}
+    # {'ads_type': 'YDN', 'stream': 'AD'}
 ]
 
 
@@ -74,7 +74,6 @@ class SourceYahooAds(AbstractSource):
           stream=item['stream'],
           start_date=config['start_date'])
       self.report_jobs.append(report_job)
-
     stream_args = []
     for report_job in self.report_jobs:
       stream_args.append({
@@ -87,13 +86,13 @@ class SourceYahooAds(AbstractSource):
 
     time.sleep(REPORT_PREPARE_TIME)
 
-    return [YssAd(**stream_args[YAHOO_ADS_SEARCH_AD_STREAM])]
-    # return [
-    #     YssAd(**args, report_job_ids[YAHOO_ADS_SEARCH_AD_STREAM]),
-    #     YssAdConversion(**args, report_job_ids[YAHOO_ADS_SEARCH_AD_CONVERSION_STREAM]),
-    #     YssKeywords(**args, report_job_ids[YAHOO_ADS_SEARCH_KEYWORDS_STREAM]),
-    #     YdnAd(**args, report_job_ids[YAHOO_ADS_DISPLAY_AD_STREAM])
-    # ]
+    return [
+        YssAd(**stream_args[YAHOO_ADS_SEARCH_AD_STREAM]),
+        YssAdConversion(
+            **stream_args[YAHOO_ADS_SEARCH_AD_CONVERSION_STREAM]),
+        YssKeywords(**stream_args[YAHOO_ADS_SEARCH_KEYWORDS_STREAM])
+        # YdnAd(**stream_args[YAHOO_ADS_DISPLAY_AD_STREAM])
+    ]
 
   def read(
       self,
@@ -106,11 +105,12 @@ class SourceYahooAds(AbstractSource):
     try:
       yield from super().read(logger, config, catalog, state)
       logger.info(f"Finished syncing {self.name} successfully")
+    except AirbyteStopSync:
+      logger.info(f"Finished syncing {self.name} with error")
+    finally:
       for report_job in self.report_jobs:
         yahoo_ads_object.remove_report(
             ads_type=report_job['ads_type'],
             report_job_id=report_job['report_job_id']
         )
-      logger.info(f"Removed reports successfully")
-    except AirbyteStopSync:
-      logger.info(f"Finished syncing {self.name} with error")
+      logger.info(f"Removed reports successfully after syncing")
