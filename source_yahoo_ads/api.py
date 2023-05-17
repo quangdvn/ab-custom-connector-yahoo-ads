@@ -82,6 +82,8 @@ YAHOO_ADS_SEARCH = {
         {'request_name': "CAMPAIGN_NAME", 'api_name': "キャンペーン名"},
         {'request_name': "ADGROUP_ID", 'api_name': "広告グループID"},
         {'request_name': "ADGROUP_NAME", 'api_name': "広告グループ名"},
+        {'request_name': "KEYWORD_ID", 'api_name': "キーワードID"},
+        {'request_name': "KEYWORD", 'api_name': "キーワード"},
         {'request_name': "COST", 'api_name': "コスト"},
         {'request_name': "IMPS", 'api_name': "インプレッション数"},
         {'request_name': "CLICKS", 'api_name': "クリック数"},

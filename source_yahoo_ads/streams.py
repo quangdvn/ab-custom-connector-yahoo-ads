@@ -90,17 +90,19 @@ class IncrementalYahooDisplayAdsStream(YahooDisplayAdsStream, ABC):
 
 class YssAd(IncrementalYahooSearchAdsStream):
   cursor_field = "日"
-  primary_key = ["広告ID", "日"]
+  primary_key = ["広告ID", "日", "デバイス"]
 
 
 class YssAdConversion(IncrementalYahooSearchAdsStream):
   cursor_field = "日"
-  primary_key = ["広告ID", "日"]
+  primary_key = ["広告ID", "日", "デバイス"]
 
 
 class YssKeywords(IncrementalYahooSearchAdsStream):
   cursor_field = "日"
-  primary_key = ["広告グループID", "日"]
+  primary_key = ["キーワードID", "日", "デバイス"]
+
+# TODO: Need to modify this when integrating YahooAds Display
 
 
 class YdnAd(IncrementalYahooDisplayAdsStream):

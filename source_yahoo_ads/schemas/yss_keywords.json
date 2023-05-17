@@ -36,6 +36,14 @@
       "type": ["string", "null"],
       "airbyte_type": "string"
     },
+    "キーワードID": {
+      "type": ["integer", "null"],
+      "airbyte_type": "integer"
+    },
+    "キーワード": {
+      "type": ["string", "null"],
+      "airbyte_type": "string"
+    },
     "コスト": {
       "type": ["integer", "null"],
       "airbyte_type": "integer"
