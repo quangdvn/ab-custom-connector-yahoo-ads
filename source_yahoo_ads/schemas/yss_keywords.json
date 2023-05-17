@@ -2,65 +2,73 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "type": "object",
   "properties": {
-    "ACCOUNT_ID": {
+    "アカウントID": {
       "type": ["string", "null"],
       "airbyte_type": "string"
     },
-    "ACCOUNT_NAME": {
+    "アカウント名": {
       "type": ["string", "null"],
       "airbyte_type": "string"
     },
-    "DAY": {
+    "日": {
       "type": ["string", "null"],
       "format": "date",
       "airbyte_type": "string",
       "airbyte_format": "%Y-%m-%d"
     },
-    "DEVICE": {
+    "デバイス": {
       "type": ["string", "null"],
       "airbyte_type": "string"
     },
-    "CAMPAIGN_ID": {
+    "キャンペーンID": {
       "type": ["integer", "null"],
       "airbyte_type": "integer"
     },
-    "CAMPAIGN_NAME": {
+    "キャンペーン名": {
       "type": ["string", "null"],
       "airbyte_type": "string"
     },
-    "ADGROUP_ID": {
+    "広告グループID": {
       "type": ["integer", "null"],
       "airbyte_type": "integer"
     },
-    "ADGROUP_NAME": {
+    "広告グループ名": {
       "type": ["string", "null"],
       "airbyte_type": "string"
     },
-    "COST": {
+    "キーワードID": {
       "type": ["integer", "null"],
       "airbyte_type": "integer"
     },
-    "IMPS": {
+    "キーワード": {
+      "type": ["string", "null"],
+      "airbyte_type": "string"
+    },
+    "コスト": {
       "type": ["integer", "null"],
       "airbyte_type": "integer"
     },
-    "CLICKS": {
+    "インプレッション数": {
       "type": ["integer", "null"],
       "airbyte_type": "integer"
     },
-    "CLICK_RATE": {
+    "クリック数": {
+      "type": ["integer", "null"],
+      "airbyte_type": "integer"
+    },
+    "クリック率": {
       "type": ["number", "null"],
       "airbyte_type": "number"
     },
-    "AVG_CPC": {
+    "平均CPC": {
       "type": ["number", "null"],
       "airbyte_type": "number"
     },
-    "CONVERSIONS": {
+    "コンバージョン数": {
       "type": ["number", "null"],
       "airbyte_type": "number"
     },
-    "CONV_RATE": {
+    "コンバージョン率": {
       "type": ["number", "null"],
       "airbyte_type": "number"
     }

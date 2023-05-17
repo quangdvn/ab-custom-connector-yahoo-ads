@@ -9,5 +9,5 @@ from airbyte_cdk.entrypoint import launch
 from source_yahoo_ads import SourceYahooAds
 
 if __name__ == "__main__":
-    source = SourceYahooAds()
-    launch(source, sys.argv[1:])
+  source = SourceYahooAds()
+  launch(source, sys.argv[1:])
