@@ -1,5 +1,3 @@
-import csv
-import os
 from abc import ABC
 from typing import Any, Iterable, List, Mapping, MutableMapping, Optional
 
@@ -58,7 +56,7 @@ class YahooSearchAdsStream(YahooAdsStream, ABC):
     return "download"
 
 
-class YahooDisplayAdsStream(HttpStream, ABC):
+class YahooDisplayAdsStream(YahooAdsStream, ABC):
   url_base = YAHOO_ADS_DISPLAY["BASE_URL"]
   http_method = "POST"
 
@@ -107,4 +105,4 @@ class YssKeywords(IncrementalYahooSearchAdsStream):
 
 class YdnAd(IncrementalYahooDisplayAdsStream):
   cursor_field = "日"
-  primary_key = ["広告ID", "日"]
+  primary_key = ["広告ID", "サーチキーワードID", "日", "デバイス"]

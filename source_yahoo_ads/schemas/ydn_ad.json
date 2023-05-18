@@ -12,8 +12,9 @@
     },
     "日": {
       "type": ["string", "null"],
+      "format": "date",
       "airbyte_type": "string",
-      "format": "date"
+      "airbyte_format": "%Y-%m-%d"
     },
     "デバイス": {
       "type": ["string", "null"],
@@ -72,8 +73,8 @@
       "airbyte_type": "number"
     },
     "コンバージョン数": {
-      "type": ["number", "null"],
-      "airbyte_type": "number"
+      "type": ["integer", "null"],
+      "airbyte_type": "integer"
     },
     "コンバージョン率": {
       "type": ["number", "null"],

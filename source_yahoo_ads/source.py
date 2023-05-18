@@ -11,7 +11,7 @@ from airbyte_cdk.sources.streams import Stream
 from airbyte_cdk.sources.streams.http.auth import TokenAuthenticator
 from airbyte_cdk.utils.traced_exception import AirbyteTracedException
 
-from source_yahoo_ads.api import YAHOO_ADS_SEARCH, YahooAds
+from source_yahoo_ads.api import YahooAds
 from source_yahoo_ads.streams import YdnAd, YssAd, YssAdConversion, YssKeywords
 
 
@@ -24,17 +24,37 @@ class AirbyteStopSync(AirbyteTracedException):
 # https://github.com/yahoojp-marketing/ads-search-api-python-samples/blob/master/report_sample.py#L68
 REPORT_PREPARE_TIME = 10
 
-YAHOO_ADS_SEARCH_AD_STREAM = 0
-YAHOO_ADS_SEARCH_AD_CONVERSION_STREAM = 1
-YAHOO_ADS_SEARCH_KEYWORDS_STREAM = 2
-YAHOO_ADS_DISPLAY_AD_STREAM = 3
+YSS_AND_YDN_INDEX = {
+    'YSS_AD': 0,
+    'YSS_AD_CONVERSION': 1,
+    'YSS_KEYWORDS': 2,
+    'YDN_AD': 3,
+}
 
-DESIRED_STREAMS = [
-    {'ads_type': 'YSS', 'stream': 'AD'},
-    {'ads_type': 'YSS', 'stream': 'AD_CONVERSION'},
-    {'ads_type': 'YSS', 'stream': 'KEYWORDS'}
-    # {'ads_type': 'YDN', 'stream': 'AD'}
-]
+YSS_INDEX = {
+    'YSS_AD': 0,
+    'YSS_AD_CONVERSION': 1,
+    'YSS_KEYWORDS': 2,
+}
+
+YDN_INDEX = {
+    'YDN_AD': 0,
+}
+
+DESIRED_STREAMS = {
+    'YSS_AND_YDN': [
+        {'ads_type': 'YSS', 'stream': 'AD'},
+        {'ads_type': 'YSS', 'stream': 'AD_CONVERSION'},
+        {'ads_type': 'YSS', 'stream': 'KEYWORDS'},
+        {'ads_type': 'YDN', 'stream': 'AD'}
+    ],
+    'YSS': [
+        {'ads_type': 'YSS', 'stream': 'AD'},
+        {'ads_type': 'YSS', 'stream': 'AD_CONVERSION'},
+        {'ads_type': 'YSS', 'stream': 'KEYWORDS'}
+    ],
+    'YDN': [{'ads_type': 'YDN', 'stream': 'AD'}],
+}
 
 
 class SourceYahooAds(AbstractSource):
@@ -68,17 +88,22 @@ class SourceYahooAds(AbstractSource):
     yahoo_ads_object = self._get_yahoo_ads_object(config)
     authenticator = TokenAuthenticator(token=yahoo_ads_object.access_token)
 
-    for item in DESIRED_STREAMS:
+    # Create a list of report jobs for all selected services
+    syncing_services = config['sync_option']['option']
+    for item in DESIRED_STREAMS[syncing_services]:
       report_job = yahoo_ads_object.add_report(
           ads_type=item['ads_type'],
           stream=item['stream'],
-          start_date=config['start_date'])
+          start_date=config['start_date'],
+      )
       self.report_jobs.append(report_job)
+
+    # Append created report jobs to corresponding streams
     stream_args = []
     for report_job in self.report_jobs:
       stream_args.append({
           "authenticator": authenticator,
-          "account_id": config["account_id"],
+          "account_id": report_job["account_id"],
           "report_job_id": report_job['report_job_id']
       })
     # For checking report jobs, delete later
@@ -86,13 +111,24 @@ class SourceYahooAds(AbstractSource):
 
     time.sleep(REPORT_PREPARE_TIME)
 
-    return [
-        YssAd(**stream_args[YAHOO_ADS_SEARCH_AD_STREAM]),
-        YssAdConversion(
-            **stream_args[YAHOO_ADS_SEARCH_AD_CONVERSION_STREAM]),
-        YssKeywords(**stream_args[YAHOO_ADS_SEARCH_KEYWORDS_STREAM])
-        # YdnAd(**stream_args[YAHOO_ADS_DISPLAY_AD_STREAM])
-    ]
+    # TODO: Need refactor this later
+    if syncing_services == 'YSS_AND_YDN':
+      return [
+          YssAd(**stream_args[YSS_AND_YDN_INDEX['YSS_AD']]),
+          YssAdConversion(
+              **stream_args[YSS_AND_YDN_INDEX['YSS_AD_CONVERSION']]),
+          YssKeywords(**stream_args[YSS_AND_YDN_INDEX['YSS_KEYWORDS']]),
+          YdnAd(**stream_args[YSS_AND_YDN_INDEX['YDN_AD']])
+      ]
+    elif syncing_services == 'YSS':
+      return [
+          YssAd(**stream_args[YSS_INDEX['YSS_AD']]),
+          YssAdConversion(
+              **stream_args[YSS_INDEX['YSS_AD_CONVERSION']]),
+          YssKeywords(**stream_args[YSS_INDEX['YSS_KEYWORDS']])
+      ]
+    elif syncing_services == 'YDN':
+      return [YdnAd(**stream_args[YDN_INDEX['YDN_AD']])]
 
   def read(
       self,
