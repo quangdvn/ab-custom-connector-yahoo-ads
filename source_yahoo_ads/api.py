@@ -104,14 +104,16 @@ class YahooAds:
       refresh_token: str = None,
       client_id: str = None,
       client_secret: str = None,
-      account_id: str = None,
+      sync_option: dict[str, str] = None,
       start_date: str = None,
       **kwargs: Any,
   ) -> None:
     self.refresh_token = refresh_token
     self.client_id = client_id
     self.client_secret = client_secret
-    self.account_id = account_id
+    # self.sync_option = sync_option
+    self.yss_account_id = sync_option.get('yss_account_id', None)
+    self.ydn_account_id = sync_option.get('ydn_account_id', None)
     self.start_date = start_date
     self.access_token = None
 
@@ -142,8 +144,9 @@ class YahooAds:
 
   def add_report(self, ads_type: str, stream: str, start_date: str) -> dict[str, str]:
     end_date = (datetime.today() + timedelta(days=-1)).strftime('%Y%m%d')
+    account_id = self.yss_account_id if ads_type == "YSS" else self.ydn_account_id
     add_config = {
-        "accountId": self.account_id,
+        "accountId": account_id,
         "operand": [
             {
                 "dateRange": {
@@ -155,7 +158,7 @@ class YahooAds:
                 "reportDownloadEncode": "UTF8",
                 "reportDownloadFormat": "CSV",
                 "reportLanguage": "JA",
-                "reportName": f"YahooReport_{end_date}",
+                "reportName": f"YahooReport_{ads_type}_{stream}_{end_date}",
                 "reportSkipReportSummary": "TRUE"
             }
         ]
@@ -178,6 +181,7 @@ class YahooAds:
       raise Exception(f'InvalidEnumError: {json.dumps(error)}')
     return {
         'ads_type': ads_type,
+        'account_id': account_id,
         'report_job_id': str(resp['rval']['values'][0]['reportDefinition']['reportJobId'])
     }
 
@@ -187,7 +191,7 @@ class YahooAds:
     elif ads_type == 'YSS':
       remove_url = f"{YAHOO_ADS_SEARCH['BASE_URL']}remove"
     remove_config = {
-        "accountId": self.account_id,
+        "accountId": self.yss_account_id if ads_type == "YSS" else self.ydn_account_id,
         "operand": [
             {
                 "reportJobId": report_job_id

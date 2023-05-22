@@ -7,7 +7,7 @@ connectionSpecification:
     - client_id
     - client_secret
     - refresh_token
-    - account_id
+    - sync_option
     - start_date
   properties:
     client_id:
@@ -28,16 +28,76 @@ connectionSpecification:
       type: string
       airbyte_secret: true
       order: 3
-    account_id:
-      title: Account id
-      description: YahooAds APIからデータを取得する際に使用するYahooAds広告検索広告のアカウントIDです。
-      type: string
+    sync_option:
+      type: object
+      oneOf:
+        - type: object
+          title: Yahoo広告の検索広告とディスプレイ広告
+          description: Yahoo広告の検索広告とディスプレイ広告を同期する
+          order: 1
+          required:
+            - yss_account_id
+            - ydn_account_id
+          properties:
+            option:
+              type: string
+              const: YSS_AND_YDN
+              title: Yahoo広告の検索広告とディスプレイ広告
+            yss_account_id:
+              type: string
+              order: 1
+              title: Yahoo広告の検索広告のアカウントID
+              pattern: \d+
+              description: Yahoo広告APIからデータを取得する際に使用するYahoo広告の検索広告のアカウントIDです。
+            ydn_account_id:
+              type: string
+              order: 2
+              title: Yahoo広告のディスプレイ広告のアカウントID
+              pattern: \d+
+              description: Yahoo広告APIからデータを取得する際に使用するYahoo広告のディスプレイ広告のアカウントIDです。
+        - type: object
+          title: Yahoo広告の検索広告
+          description: Yahoo広告の検索広告のみを同期する
+          order: 2
+          required:
+            - yss_account_id
+          properties:
+            option:
+              type: string
+              const: YSS
+              title: Yahoo広告の検索広告
+            yss_account_id:
+              type: string
+              title: Yahoo広告の検索広告のアカウントID
+              pattern: \d+
+              description: Yahoo広告APIからデータを取得する際に使用するYahoo広告の検索広告のアカウントIDです。
+        - type: object
+          title: Yahoo広告のディスプレイ広告
+          description: Yahoo広告のディスプレイ広告のみを同期する
+          order: 3
+          required:
+            - ydn_account_id
+          properties:
+            option:
+              type: string
+              const: YDN
+              title: Yahoo広告のディスプレイ広告
+            ydn_account_id:
+              type: string
+              title: Yahoo広告のディスプレイ広告のアカウントID
+              pattern: \d+
+              description: Yahoo広告APIからデータを取得する際に使用するYahoo広告のディスプレイ広告のアカウントIDです。
       order: 4
+      title: 同期種類
+      default: YSS_AND_YDN
+      description: Yahoo広告でどんな種類を同期するか選択肢です。
     start_date:
       title: Start Date
       description: >-
         データ取得期間の開始日 (フォーマット: YYYYMMDD。例: 20230101)。この開始日より前のデータは取得されません。
         入力可能な最新日は本日の昨日です(本日は 2023-01-01 であれば 20221231 まで入力可能)。
+      pattern: >-
+        ^[0-9]{4}[0-9]{2}[0-9]{2}$
       type: string
       examples:
         - "20230101"
