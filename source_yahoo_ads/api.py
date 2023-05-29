@@ -143,7 +143,8 @@ class YahooAds:
     self.access_token = auth["access_token"]
 
   def add_report(self, ads_type: str, stream: str, start_date: str) -> dict[str, str]:
-    end_date = (datetime.today() + timedelta(days=-1)).strftime('%Y%m%d')
+    end_date = (datetime.today() + timedelta(hours=9) +
+                timedelta(days=-1)).strftime('%Y%m%d')
     account_id = self.yss_account_id if ads_type == "YSS" else self.ydn_account_id
     add_config = {
         "accountId": account_id,
