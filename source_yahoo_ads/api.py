@@ -1,6 +1,8 @@
-import concurrent.futures
+# import concurrent.futures
 import json
 import logging
+import time
+import uuid
 from datetime import datetime, timedelta
 from typing import Any, List, Mapping, Optional, Tuple
 
@@ -94,6 +96,11 @@ YAHOO_ADS_SEARCH = {
     ]
 }
 
+# Hard code the value for now
+# TODO: Implement this idea (use `/get` to check reportJobStatus and recursion until report is created)
+# https://github.com/yahoojp-marketing/ads-search-api-python-samples/blob/master/report_sample.py#L68
+REPORT_PREPARE_TIME = 10
+
 
 class YahooAds:
   logger = logging.getLogger("airbyte")
@@ -159,31 +166,58 @@ class YahooAds:
                 "reportDownloadEncode": "UTF8",
                 "reportDownloadFormat": "CSV",
                 "reportLanguage": "JA",
-                "reportName": f"YahooReport_{ads_type}_{stream}_{end_date}",
+                "reportName": f"YahooReport_{ads_type}_{stream}_{end_date}_{uuid.uuid4()}",
                 "reportSkipReportSummary": "TRUE"
             }
         ]
     }
+
     if ads_type == 'YDN':
       add_url = f"{YAHOO_ADS_DISPLAY['BASE_URL']}add"
+      get_url = f"{YAHOO_ADS_DISPLAY['BASE_URL']}get"
+
     elif ads_type == 'YSS':
       add_url = f"{YAHOO_ADS_SEARCH['BASE_URL']}add"
+      get_url = f"{YAHOO_ADS_DISPLAY['BASE_URL']}get"
       add_config["operand"][0]["reportType"] = stream if stream == "KEYWORDS" else "AD"
 
     headers = self._get_standard_headers()
 
-    resp = self._make_request(
+    add_report_resp = self._make_request(
         http_method='POST',
         url=add_url,
         body=json.dumps(add_config),
         headers=headers).json()
-    if not resp['rval']['values'][0]['operationSucceeded']:
-      error = resp['rval']['values'][0]['errors']
+    if not add_report_resp['rval']['values'][0]['operationSucceeded']:
+      error = add_report_resp['rval']['values'][0]['errors']
       raise Exception(f'InvalidEnumError: {json.dumps(error)}')
+
+    time.sleep(REPORT_PREPARE_TIME)
+    # WAIT -- Please wait for report request to complete.
+    # COMPLETED -- Report request completed successfully.
+    # IN_PROGRESS -- Report is in creating process.
+    # FAILED -- Report request failed.
+    # UNKNOWN -- Unknown Value
+    
+    get_config = {
+        "accountId": account_id,
+        "reportJobIds": [
+            str(add_report_resp['rval']['values'][0]
+                ['reportDefinition']['reportJobId'])
+        ]
+    }
+    get_report_resp = self._make_request(
+        http_method='POST',
+        url=get_url,
+        body=json.dumps(get_config),
+        headers=headers).json()
+
     return {
         'ads_type': ads_type,
+        'stream': stream,
         'account_id': account_id,
-        'report_job_id': str(resp['rval']['values'][0]['reportDefinition']['reportJobId'])
+        'report_job_id': str(get_report_resp['rval']['values'][0]['reportDefinition']['reportJobId']),
+        'report_job_status': str(get_report_resp['rval']['values'][0]['reportDefinition']['reportJobStatus']),
     }
 
   def remove_report(self, ads_type: str, report_job_id: str) -> bool:
@@ -211,7 +245,7 @@ class YahooAds:
       raise Exception(f'InvalidEnumError: {json.dumps(error)}')
     return resp['rval']['values'][0]['operationSucceeded']
 
-  @default_backoff_handler(max_tries=5, factor=5)
+  @ default_backoff_handler(max_tries=5, factor=5)
   def _make_request(
       self,
       http_method: str,
