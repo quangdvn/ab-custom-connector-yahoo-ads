@@ -68,7 +68,7 @@ class SourceYahooAds(AbstractSource):
     try:
       yahoo_ads_object = self._get_yahoo_ads_object(config)
       if hasattr(yahoo_ads_object, 'access_token'):
-        print('Authentication successful with info: ', config)
+        logger.info('Authentication successful')
         return True, None
       return False, "Invalid access token"
     except requests.exceptions.HTTPError as error:
@@ -139,10 +139,13 @@ class SourceYahooAds(AbstractSource):
     except AirbyteStopSync:
       logger.info(f"Finished syncing {self.name} with error")
     finally:
+      removed_report_count = 0
       for report_job in self.report_jobs:
         if report_job['report_job_status'] == 'COMPLETED':
+          removed_report_count += 1
           yahoo_ads_object.remove_report(
               ads_type=report_job['ads_type'],
               report_job_id=report_job['report_job_id']
           )
-      logger.info(f"Removed reports successfully after syncing")
+      logger.info(
+          f"Removed {removed_report_count}/{len(self.report_jobs)} reports successfully after syncing")
