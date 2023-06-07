@@ -1,5 +1,4 @@
 import logging
-import time
 from typing import Any, Iterator, List, Mapping, MutableMapping, Tuple, Union
 
 import requests
@@ -18,11 +17,6 @@ from source_yahoo_ads.streams import YdnAd, YssAd, YssAdConversion, YssKeywords
 class AirbyteStopSync(AirbyteTracedException):
   pass
 
-
-# Hard code the value for now
-# TODO: Implement this idea (use `/get` to check reportJobStatus and recursion until report is created)
-# https://github.com/yahoojp-marketing/ads-search-api-python-samples/blob/master/report_sample.py#L68
-REPORT_PREPARE_TIME = 10
 
 YSS_AND_YDN_INDEX = {
     'YSS_AD': 0,
@@ -74,6 +68,7 @@ class SourceYahooAds(AbstractSource):
     try:
       yahoo_ads_object = self._get_yahoo_ads_object(config)
       if hasattr(yahoo_ads_object, 'access_token'):
+        logger.info('Authentication successful')
         return True, None
       return False, "Invalid access token"
     except requests.exceptions.HTTPError as error:
@@ -106,10 +101,10 @@ class SourceYahooAds(AbstractSource):
           "account_id": report_job["account_id"],
           "report_job_id": report_job['report_job_id']
       })
-    # For checking report jobs, delete later
-    print('ids', self.report_jobs)
 
-    time.sleep(REPORT_PREPARE_TIME)
+    print('================Current sync report jobs================')
+    print('report_job_ids: ', self.report_jobs)
+    print('========================================================')
 
     # TODO: Need refactor this later
     if syncing_services == 'YSS_AND_YDN':
@@ -144,9 +139,13 @@ class SourceYahooAds(AbstractSource):
     except AirbyteStopSync:
       logger.info(f"Finished syncing {self.name} with error")
     finally:
+      removed_report_count = 0
       for report_job in self.report_jobs:
-        yahoo_ads_object.remove_report(
-            ads_type=report_job['ads_type'],
-            report_job_id=report_job['report_job_id']
-        )
-      logger.info(f"Removed reports successfully after syncing")
+        if report_job['report_job_status'] == 'COMPLETED':
+          removed_report_count += 1
+          yahoo_ads_object.remove_report(
+              ads_type=report_job['ads_type'],
+              report_job_id=report_job['report_job_id']
+          )
+      logger.info(
+          f"Removed {removed_report_count}/{len(self.report_jobs)} reports successfully after syncing")
